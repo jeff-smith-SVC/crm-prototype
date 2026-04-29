@@ -1,0 +1,1535 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Combobox Search Patterns — Prototype</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      background: #f5f6f8;
+      color: #1a1a1a;
+    }
+
+    /* ── Header bar ── */
+    .header {
+      background: #fff;
+      border-bottom: 1px solid #e5e7eb;
+      padding: 16px 32px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      position: sticky;
+      top: 0;
+      z-index: 20;
+    }
+
+    .header-left h1 {
+      font-size: 18px;
+      font-weight: 600;
+      line-height: 1.2;
+    }
+
+    .header-left .subtitle {
+      font-size: 12px;
+      color: #888;
+      margin-top: 2px;
+    }
+
+    /* ── Pattern switch ── */
+    .pattern-switch {
+      display: flex;
+      align-items: center;
+      gap: 4px;
+      background: #f3f4f6;
+      border-radius: 8px;
+      padding: 3px;
+    }
+
+    .pattern-switch button {
+      padding: 7px 16px;
+      font-size: 13px;
+      font-weight: 500;
+      border: none;
+      border-radius: 6px;
+      cursor: pointer;
+      background: transparent;
+      color: #666;
+      transition: all 0.15s;
+      white-space: nowrap;
+    }
+
+    .pattern-switch button.active {
+      background: #fff;
+      color: #1a1a1a;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.08);
+    }
+
+    .pattern-switch button:not(.active):hover {
+      color: #333;
+    }
+
+    .pattern-label {
+      font-size: 11px;
+      font-weight: 600;
+      color: #999;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      margin-right: 8px;
+    }
+
+    /* ── Main content ── */
+    .main {
+      max-width: 100%;
+      margin: 32px auto;
+      padding: 0 24px;
+    }
+
+    .card {
+      background: #fff;
+      border-radius: 12px;
+      padding: 24px;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.08), 0 0 0 1px rgba(0,0,0,0.04);
+      display: flex;
+      gap: 0;
+    }
+
+    .card .pattern-info {
+      font-size: 13px;
+      color: #666;
+      margin-bottom: 20px;
+      line-height: 1.5;
+      padding: 10px 12px;
+      background: #f9fafb;
+      border-radius: 8px;
+      border-left: 3px solid #4f46e5;
+    }
+
+    .card label {
+      display: block;
+      font-size: 13px;
+      font-weight: 500;
+      color: #444;
+      margin-bottom: 6px;
+    }
+
+    /* ── Combobox ── */
+    .combobox-wrapper {
+      position: relative;
+    }
+
+    .combobox-input {
+      width: 100%;
+      padding: 10px 36px 10px 12px;
+      border: 1px solid #d0d5dd;
+      border-radius: 8px;
+      font-size: 14px;
+      color: #1a1a1a;
+      background: #fff;
+      outline: none;
+      transition: border-color 0.15s, box-shadow 0.15s;
+    }
+
+    .combobox-input::placeholder { color: #999; }
+
+    .combobox-input:focus {
+      border-color: #4f46e5;
+      box-shadow: 0 0 0 3px rgba(79, 70, 229, 0.12);
+    }
+
+    .combobox-icon {
+      position: absolute;
+      right: 10px;
+      top: 50%;
+      transform: translateY(-50%);
+      pointer-events: none;
+      color: #999;
+    }
+
+    .combobox-listbox {
+      position: absolute;
+      top: calc(100% + 4px);
+      left: 0;
+      right: 0;
+      max-height: 320px;
+      overflow-y: auto;
+      background: #fff;
+      border: 1px solid #e0e0e0;
+      border-radius: 8px;
+      box-shadow: 0 8px 24px rgba(0,0,0,0.12);
+      z-index: 10;
+      display: none;
+      padding: 4px;
+    }
+
+    .combobox-listbox.open { display: block; }
+
+    .combobox-option {
+      padding: 8px 12px;
+      font-size: 14px;
+      border-radius: 6px;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+
+    .combobox-option:hover,
+    .combobox-option.highlighted { background: #f0effe; }
+
+    .combobox-option .match {
+      background: #fef08a;
+      border-radius: 2px;
+      padding: 0 1px;
+    }
+
+    .combobox-option .type-badge {
+      font-size: 11px;
+      padding: 2px 8px;
+      border-radius: 100px;
+      font-weight: 500;
+      white-space: nowrap;
+      margin-left: 8px;
+      flex-shrink: 0;
+    }
+
+    .type-badge.plan { background: #e0f2fe; color: #0369a1; }
+    .type-badge.flex { background: #fce7f3; color: #be185d; }
+
+    .group-header {
+      padding: 8px 12px 4px;
+      font-size: 11px;
+      font-weight: 600;
+      color: #888;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      pointer-events: none;
+    }
+
+    .no-results {
+      padding: 16px 12px;
+      font-size: 13px;
+      color: #999;
+      text-align: center;
+    }
+
+    .result-count {
+      font-size: 12px;
+      color: #999;
+      margin-top: 8px;
+    }
+
+    .divider {
+      height: 1px;
+      background: #e5e7eb;
+      margin: 4px 8px;
+    }
+
+    /* ── Scrollbar ── */
+    .combobox-listbox::-webkit-scrollbar { width: 6px; }
+    .combobox-listbox::-webkit-scrollbar-track { background: transparent; }
+    .combobox-listbox::-webkit-scrollbar-thumb { background: #d0d5dd; border-radius: 3px; }
+
+    /* ── Plan form fields ── */
+    .plan-form {
+      margin-top: 24px;
+      padding-top: 24px;
+      border-top: 1px solid #e5e7eb;
+      display: none;
+    }
+
+    .plan-form.visible { display: block; }
+
+    .plan-form h3 {
+      font-size: 14px;
+      font-weight: 600;
+      margin-bottom: 16px;
+    }
+
+    .form-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 12px;
+    }
+
+    .form-field {
+      display: flex;
+      flex-direction: column;
+    }
+
+    .form-field label {
+      font-size: 12px;
+      font-weight: 500;
+      color: #555;
+      margin-bottom: 4px;
+    }
+
+    .form-field input {
+      padding: 8px 10px;
+      border: 1px solid #d0d5dd;
+      border-radius: 6px;
+      font-size: 13px;
+      color: #1a1a1a;
+      outline: none;
+      transition: border-color 0.15s, box-shadow 0.15s;
+    }
+
+    .form-field input:focus {
+      border-color: #4f46e5;
+      box-shadow: 0 0 0 3px rgba(79, 70, 229, 0.12);
+    }
+
+    .form-field input::placeholder { color: #bbb; }
+
+    .form-row {
+      display: flex;
+      gap: 10px;
+      align-items: flex-end;
+    }
+
+    .form-row .form-field {
+      flex: 1;
+      min-width: 0;
+    }
+
+    .form-row .form-field-actions {
+      flex: none;
+    }
+
+    .form-row .form-actions {
+      margin-top: 0;
+    }
+
+    .form-actions {
+      margin-top: 16px;
+      display: flex;
+      gap: 8px;
+    }
+
+    .btn {
+      padding: 9px 18px;
+      border-radius: 8px;
+      font-size: 13px;
+      font-weight: 500;
+      cursor: pointer;
+      border: none;
+      transition: background 0.15s;
+    }
+
+    .btn-primary { background: #4f46e5; color: #fff; }
+    .btn-primary:hover { background: #4338ca; }
+    .btn-secondary { background: #fff; color: #344054; border: 1px solid #d0d5dd; }
+    .btn-secondary:hover { background: #f9fafb; }
+
+    /* ── Flex detail view ── */
+    .view { display: none; }
+    .view.active { display: block; }
+
+    .flex-detail-page { max-width: 620px; margin: 32px auto; padding: 0 24px; }
+
+    .back-link {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      font-size: 13px;
+      color: #4f46e5;
+      text-decoration: none;
+      cursor: pointer;
+      margin-bottom: 20px;
+      font-weight: 500;
+    }
+
+    .back-link:hover { color: #4338ca; }
+
+    .flex-detail-card {
+      background: #fff;
+      border-radius: 12px;
+      padding: 28px;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.08), 0 0 0 1px rgba(0,0,0,0.04);
+    }
+
+    .flex-detail-card .plan-header {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      margin-bottom: 24px;
+    }
+
+    .flex-detail-card .plan-header h2 {
+      font-size: 20px;
+      font-weight: 600;
+    }
+
+    .detail-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 16px;
+      margin-bottom: 28px;
+    }
+
+    .detail-item { display: flex; flex-direction: column; gap: 2px; }
+
+    .detail-item .detail-label {
+      font-size: 12px;
+      font-weight: 500;
+      color: #888;
+      text-transform: uppercase;
+      letter-spacing: 0.3px;
+    }
+
+    .detail-item .detail-value {
+      font-size: 14px;
+      color: #1a1a1a;
+      font-weight: 500;
+    }
+
+    .cta-group { display: flex; gap: 12px; }
+
+    .btn-large {
+      flex: 1;
+      padding: 14px 24px;
+      border-radius: 10px;
+      font-size: 15px;
+      font-weight: 600;
+      cursor: pointer;
+      border: none;
+      transition: background 0.15s, box-shadow 0.15s, transform 0.1s;
+      text-align: center;
+    }
+
+    .btn-large:active { transform: scale(0.98); }
+    .btn-create-order { background: #4f46e5; color: #fff; }
+    .btn-create-order:hover { background: #4338ca; box-shadow: 0 2px 8px rgba(79,70,229,0.3); }
+    .btn-search-history { background: #fff; color: #344054; border: 1px solid #d0d5dd; }
+    .btn-search-history:hover { background: #f9fafb; box-shadow: 0 2px 8px rgba(0,0,0,0.06); }
+
+    /* ── Radio search method (left sidebar) ── */
+    .search-method {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      width: 200px;
+      flex-shrink: 0;
+      padding-right: 24px;
+      margin-right: 24px;
+      border-right: 1px solid #e5e7eb;
+    }
+
+    .radio-card {
+      display: flex;
+      align-items: flex-start;
+      gap: 10px;
+      padding: 12px 14px;
+      border: 2px solid transparent;
+      border-radius: 10px;
+      cursor: pointer;
+      transition: border-color 0.15s, background 0.15s;
+    }
+
+    .radio-card:hover {
+      background: #fafaff;
+    }
+
+    .radio-card.active {
+      border-color: #4f46e5;
+      background: #f5f3ff;
+    }
+
+    .radio-card input[type="radio"] {
+      accent-color: #4f46e5;
+      width: 16px;
+      height: 16px;
+      margin: 2px 0 0 0;
+      flex-shrink: 0;
+    }
+
+    .radio-card-text {
+      display: flex;
+      flex-direction: column;
+      gap: 1px;
+    }
+
+    .radio-card-label {
+      font-size: 13px;
+      font-weight: 600;
+      color: #1a1a1a;
+    }
+
+    .radio-card-desc {
+      font-size: 11px;
+      color: #888;
+      line-height: 1.3;
+    }
+
+    .search-content {
+      flex: 1;
+      min-width: 0;
+    }
+
+    .search-section { display: none; }
+    .search-section.visible { display: block; }
+
+    /* ── Search results card ── */
+    .results-card {
+      margin-top: 24px;
+      display: none;
+    }
+
+    .results-card.visible { display: block; }
+
+    .results-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 12px;
+    }
+
+    .results-header h3 {
+      font-size: 14px;
+      font-weight: 600;
+    }
+
+    .results-header .results-meta {
+      font-size: 12px;
+      color: #888;
+    }
+
+    .results-table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 13px;
+    }
+
+    .results-table th {
+      text-align: left;
+      font-size: 11px;
+      font-weight: 600;
+      color: #888;
+      text-transform: uppercase;
+      letter-spacing: 0.3px;
+      padding: 8px 10px;
+      border-bottom: 2px solid #e5e7eb;
+    }
+
+    .results-table td {
+      padding: 10px 10px;
+      border-bottom: 1px solid #f0f0f0;
+      color: #333;
+    }
+
+    .results-table tr:hover td {
+      background: #f9fafb;
+    }
+
+    .results-table tr {
+      cursor: pointer;
+    }
+
+    .results-table .member-name {
+      font-weight: 500;
+      color: #1a1a1a;
+    }
+
+    .results-table .member-id-cell {
+      font-family: 'SF Mono', SFMono-Regular, Menlo, monospace;
+      font-size: 12px;
+      color: #666;
+    }
+
+    .results-empty {
+      text-align: center;
+      padding: 24px 12px;
+      color: #999;
+      font-size: 13px;
+    }
+
+    /* ── Header pattern switch fade ── */
+    .pattern-switch-wrapper {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      transition: opacity 0.2s;
+    }
+
+    .pattern-switch-wrapper.disabled {
+      opacity: 0.35;
+      pointer-events: none;
+    }
+
+    /* ── Header controls row ── */
+    .header-right {
+      display: flex;
+      align-items: center;
+      gap: 16px;
+    }
+
+    /* ── Tips toggle button ── */
+    .tips-toggle {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      padding: 7px 14px;
+      font-size: 13px;
+      font-weight: 500;
+      border: 1px solid #d0d5dd;
+      border-radius: 8px;
+      background: #fff;
+      color: #444;
+      cursor: pointer;
+      transition: background 0.15s, border-color 0.15s;
+      white-space: nowrap;
+    }
+
+    .tips-toggle:hover {
+      background: #f9fafb;
+      border-color: #bbb;
+    }
+
+    .tips-toggle.active {
+      background: #f5f3ff;
+      border-color: #4f46e5;
+      color: #4f46e5;
+    }
+
+    /* ── Side panel ── */
+    .side-panel-overlay {
+      position: fixed;
+      inset: 0;
+      background: rgba(0,0,0,0.15);
+      z-index: 29;
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity 0.2s;
+    }
+
+    .side-panel-overlay.open {
+      opacity: 1;
+      pointer-events: auto;
+    }
+
+    .side-panel {
+      position: fixed;
+      top: 0;
+      right: 0;
+      bottom: 0;
+      width: 340px;
+      background: #fff;
+      box-shadow: -4px 0 24px rgba(0,0,0,0.1);
+      z-index: 30;
+      transform: translateX(100%);
+      transition: transform 0.25s ease;
+      display: flex;
+      flex-direction: column;
+    }
+
+    .side-panel.open {
+      transform: translateX(0);
+    }
+
+    .side-panel-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 20px 24px 16px;
+      border-bottom: 1px solid #e5e7eb;
+    }
+
+    .side-panel-header h2 {
+      font-size: 16px;
+      font-weight: 600;
+    }
+
+    .side-panel-close {
+      width: 32px;
+      height: 32px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      border: none;
+      background: transparent;
+      border-radius: 6px;
+      cursor: pointer;
+      color: #666;
+      transition: background 0.15s;
+    }
+
+    .side-panel-close:hover {
+      background: #f3f4f6;
+      color: #333;
+    }
+
+    .side-panel-body {
+      flex: 1;
+      overflow-y: auto;
+      padding: 20px 24px;
+    }
+
+    .tip-section {
+      margin-bottom: 24px;
+    }
+
+    .tip-section h3 {
+      font-size: 12px;
+      font-weight: 600;
+      color: #888;
+      text-transform: uppercase;
+      letter-spacing: 0.4px;
+      margin-bottom: 12px;
+    }
+
+    .tip-card {
+      padding: 12px;
+      background: #f9fafb;
+      border-radius: 8px;
+      margin-bottom: 8px;
+      border: 1px solid #f0f0f0;
+    }
+
+    .tip-card .tip-label {
+      font-size: 12px;
+      font-weight: 600;
+      color: #555;
+      margin-bottom: 4px;
+    }
+
+    .tip-card .tip-value {
+      font-size: 13px;
+      color: #1a1a1a;
+      line-height: 1.4;
+    }
+
+    .tip-card .tip-value code {
+      font-family: 'SF Mono', SFMono-Regular, Menlo, monospace;
+      font-size: 12px;
+      background: #eef2ff;
+      color: #4338ca;
+      padding: 1px 5px;
+      border-radius: 4px;
+    }
+
+    .tip-card .tip-hint {
+      font-size: 11px;
+      color: #999;
+      margin-top: 4px;
+    }
+  </style>
+</head>
+<body>
+
+  <!-- ═══════ HEADER ═══════ -->
+  <div class="header">
+    <div class="header-left">
+      <h1>Account Search</h1>
+      <div class="subtitle">Prototype — 103 plans</div>
+    </div>
+    <div class="header-right">
+      <div class="pattern-switch-wrapper disabled" id="pattern-switch-wrapper">
+        <span class="pattern-label">Search pattern</span>
+        <div class="pattern-switch" id="pattern-switch">
+          <button class="active" data-pattern="typeahead">Type-ahead</button>
+          <button data-pattern="grouped">Grouped by type</button>
+        </div>
+      </div>
+      <button class="tips-toggle" id="tips-toggle">
+        <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><circle cx="8" cy="8" r="6.25" stroke="currentColor" stroke-width="1.5"/><path d="M8 7v4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/><circle cx="8" cy="5" r="0.75" fill="currentColor"/></svg>
+        Sample data
+      </button>
+    </div>
+  </div>
+
+  <!-- ═══════ SEARCH VIEW ═══════ -->
+  <div class="view active" id="view-search">
+    <div class="main">
+      <div class="card">
+        <!-- ── Search method radio ── -->
+        <div class="search-method" id="search-method">
+          <label class="radio-card active" data-method="member">
+            <input type="radio" name="search-method" value="member" checked>
+            <div class="radio-card-text">
+              <span class="radio-card-label">Search by member info</span>
+              <span class="radio-card-desc">Look up using personal details</span>
+            </div>
+          </label>
+          <label class="radio-card" data-method="plan">
+            <input type="radio" name="search-method" value="plan">
+            <div class="radio-card-text">
+              <span class="radio-card-label">Search by plan</span>
+              <span class="radio-card-desc">Find a member through their plan</span>
+            </div>
+          </label>
+        </div>
+
+        <div class="search-content">
+        <!-- ══ Section: Search by plan ══ -->
+        <div class="search-section" id="section-plan">
+          <label for="combo-input">Select a plan</label>
+          <div class="combobox-wrapper" id="combobox-wrapper">
+            <input
+              type="text"
+              class="combobox-input"
+              id="combo-input"
+              placeholder="Search plans..."
+              autocomplete="off"
+              role="combobox"
+              aria-expanded="false"
+              aria-autocomplete="list"
+            >
+            <svg class="combobox-icon" width="16" height="16" viewBox="0 0 16 16" fill="none">
+              <path d="M11.5 7a4.5 4.5 0 1 1-9 0 4.5 4.5 0 0 1 9 0Z" stroke="currentColor" stroke-width="1.5"/>
+              <path d="m10 10 3.5 3.5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
+            </svg>
+            <div class="combobox-listbox" role="listbox" id="combo-listbox"></div>
+          </div>
+          <div class="result-count" id="result-count"></div>
+
+          <!-- True Plan post-selection form -->
+          <div class="plan-form" id="plan-form">
+            <h3>Member Search</h3>
+            <div class="form-row">
+              <div class="form-field">
+                <label for="f-member-id">Member ID</label>
+                <input type="text" id="f-member-id" placeholder="MBR-00123456">
+              </div>
+              <div class="form-field">
+                <label for="f-first-name">First name</label>
+                <input type="text" id="f-first-name" placeholder="Jane">
+              </div>
+              <div class="form-field">
+                <label for="f-last-name">Last name</label>
+                <input type="text" id="f-last-name" placeholder="Smith">
+              </div>
+              <div class="form-field">
+                <label for="f-claim-id">Claim ID</label>
+                <input type="text" id="f-claim-id" placeholder="CLM-789012">
+              </div>
+              <div class="form-field">
+                <label for="f-order-id">Order ID</label>
+                <input type="text" id="f-order-id" placeholder="ORD-345678">
+              </div>
+              <div class="form-field">
+                <label for="f-phone">Phone number</label>
+                <input type="tel" id="f-phone" placeholder="(555) 123-4567">
+              </div>
+            </div>
+            <div class="form-actions">
+              <button class="btn btn-secondary" id="btn-clear">Clear</button>
+              <button class="btn btn-primary" id="btn-search-plan">Search member</button>
+            </div>
+          </div>
+
+        </div>
+
+        <!-- ══ Section: Search by member info ══ -->
+        <div class="search-section visible" id="section-member">
+          <h3 style="font-size:14px;font-weight:600;margin-bottom:16px;">Member Information</h3>
+          <div class="form-row">
+            <div class="form-field">
+              <label for="m-first-name">First name</label>
+              <input type="text" id="m-first-name" placeholder="Jane">
+            </div>
+            <div class="form-field">
+              <label for="m-last-name">Last name</label>
+              <input type="text" id="m-last-name" placeholder="Smith">
+            </div>
+            <div class="form-field">
+              <label for="m-dob">Date of birth</label>
+              <input type="date" id="m-dob">
+            </div>
+            <div class="form-field">
+              <label for="m-zip">Zip code</label>
+              <input type="text" id="m-zip" placeholder="10001" maxlength="10">
+            </div>
+          </div>
+          <div class="form-actions" style="margin-top:16px;">
+            <button class="btn btn-secondary" id="btn-clear-member">Clear</button>
+            <button class="btn btn-primary" id="btn-search-member">Search member</button>
+          </div>
+
+        </div>
+        </div><!-- /.search-content -->
+      </div>
+
+      <!-- ══ Search results card ══ -->
+      <div class="card results-card" id="results-card">
+        <div class="results-header">
+          <h3>Search Results</h3>
+          <span class="results-meta" id="results-meta"></span>
+        </div>
+        <div id="results-body"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ═══════ FLEX CARD DETAIL VIEW ═══════ -->
+  <div class="view" id="view-flex-detail">
+    <div class="flex-detail-page">
+      <a class="back-link" onclick="showSearchView()">
+        <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M10 3L5 8l5 5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        Back to search
+      </a>
+      <div class="flex-detail-card">
+        <div class="plan-header">
+          <h2 id="flex-plan-name">—</h2>
+          <span class="type-badge flex">Flex Card Plan</span>
+        </div>
+        <div class="detail-grid">
+          <div class="detail-item">
+            <span class="detail-label">Plan Type</span>
+            <span class="detail-value">True Flex Card Plan</span>
+          </div>
+          <div class="detail-item">
+            <span class="detail-label">Status</span>
+            <span class="detail-value" style="color:#16a34a;">Active</span>
+          </div>
+          <div class="detail-item">
+            <span class="detail-label">Card Number</span>
+            <span class="detail-value" id="flex-card-number">—</span>
+          </div>
+          <div class="detail-item">
+            <span class="detail-label">Balance</span>
+            <span class="detail-value" id="flex-balance">—</span>
+          </div>
+          <div class="detail-item">
+            <span class="detail-label">Member Since</span>
+            <span class="detail-value" id="flex-member-since">—</span>
+          </div>
+          <div class="detail-item">
+            <span class="detail-label">Benefit Period</span>
+            <span class="detail-value">Jan 1 – Dec 31, 2026</span>
+          </div>
+        </div>
+        <div class="cta-group">
+          <button class="btn-large btn-create-order">Create Order</button>
+          <button class="btn-large btn-search-history">Search Order History</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ═══════ SIDE PANEL: SAMPLE DATA ═══════ -->
+  <div class="side-panel-overlay" id="panel-overlay"></div>
+  <div class="side-panel" id="side-panel">
+    <div class="side-panel-header">
+      <h2>Sample Data</h2>
+      <button class="side-panel-close" id="panel-close">
+        <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M4 4l8 8M12 4l-8 8" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>
+      </button>
+    </div>
+    <div class="side-panel-body">
+
+      <div class="tip-section">
+        <h3>Search by member info</h3>
+
+        <div class="tip-card">
+          <div class="tip-label">Name search</div>
+          <div class="tip-value">First name <code>Maria</code></div>
+          <div class="tip-hint">Finds Maria Garcia (Aetna Commercial)</div>
+        </div>
+
+        <div class="tip-card">
+          <div class="tip-label">Name search</div>
+          <div class="tip-value">Last name <code>Walker</code></div>
+          <div class="tip-hint">Finds Lisa Walker (Kaiser Permanente NCAL)</div>
+        </div>
+
+        <div class="tip-card">
+          <div class="tip-label">Zip code search</div>
+          <div class="tip-value">Zip <code>330</code></div>
+          <div class="tip-hint">Finds 4 members in South Florida</div>
+        </div>
+
+        <div class="tip-card">
+          <div class="tip-label">DOB search</div>
+          <div class="tip-value">Date of birth <code>1958-03-14</code></div>
+          <div class="tip-hint">Finds Maria Garcia</div>
+        </div>
+
+        <div class="tip-card">
+          <div class="tip-label">Zip code search</div>
+          <div class="tip-value">Zip <code>55</code></div>
+          <div class="tip-hint">Finds 3 members in Minneapolis area</div>
+        </div>
+      </div>
+
+      <div class="tip-section">
+        <h3>Search by plan</h3>
+
+        <div class="tip-card">
+          <div class="tip-label">Aetna Commercial</div>
+          <div class="tip-value">Maria Garcia</div>
+          <div class="tip-hint">Member ID: <code>MBR-00198432</code></div>
+        </div>
+
+        <div class="tip-card">
+          <div class="tip-label">Blue Cross Blue Shield MN</div>
+          <div class="tip-value">James Wilson</div>
+          <div class="tip-hint">Member ID: <code>MBR-00234871</code></div>
+        </div>
+
+        <div class="tip-card">
+          <div class="tip-label">Kaiser Permanente CO</div>
+          <div class="tip-value">Daniel Robinson</div>
+          <div class="tip-hint">Flex card plan &middot; Member ID: <code>MBR-00745678</code></div>
+        </div>
+
+        <div class="tip-card">
+          <div class="tip-label">MetroPlus Health Plan</div>
+          <div class="tip-value">Susan Taylor</div>
+          <div class="tip-hint">Member ID: <code>MBR-00534567</code></div>
+        </div>
+
+        <div class="tip-card">
+          <div class="tip-label">IBX</div>
+          <div class="tip-value">Betty Allen</div>
+          <div class="tip-hint">Flex card plan &middot; Member ID: <code>MBR-00834567</code></div>
+        </div>
+
+        <div class="tip-card">
+          <div class="tip-label">Devoted Health</div>
+          <div class="tip-value">Steven Lopez</div>
+          <div class="tip-hint">Member ID: <code>MBR-00934567</code></div>
+        </div>
+      </div>
+
+      <div class="tip-section">
+        <h3>Other test values</h3>
+
+        <div class="tip-card">
+          <div class="tip-label">Claim ID</div>
+          <div class="tip-value"><code>CLM-881023</code></div>
+          <div class="tip-hint">Maria Garcia &middot; Aetna Commercial</div>
+        </div>
+
+        <div class="tip-card">
+          <div class="tip-label">Order ID</div>
+          <div class="tip-value"><code>ORD-440889</code></div>
+          <div class="tip-hint">Daniel Robinson &middot; Kaiser Permanente CO</div>
+        </div>
+
+        <div class="tip-card">
+          <div class="tip-label">Phone number</div>
+          <div class="tip-value"><code>(212) 555-1045</code></div>
+          <div class="tip-hint">Susan Taylor &middot; MetroPlus Health Plan</div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+<script>
+// ── Plan data ──
+const plans = [
+  { name: "Aetna Commercial", type: "True plan" },
+  { name: "Aetna International", type: "True plan" },
+  { name: "Aetna Medicaid/Better Health/CHIP", type: "True plan" },
+  { name: "Blue Cross Blue Shield MN", type: "True plan" },
+  { name: "Clear Health Alliance", type: "True plan" },
+  { name: "Simply Healthcare", type: "True plan" },
+  { name: "Blue Shield California", type: "True plan" },
+  { name: "Absolute Total Care-Centene Medicaid", type: "True plan" },
+  { name: "Buckeye Health Plan-Centene Medicaid", type: "True plan" },
+  { name: "Carolina Complete-Centene Medicaid", type: "True plan" },
+  { name: "Children Medical Services-Centene Medicaid", type: "True plan" },
+  { name: "Delaware First health-Centene Medicaid", type: "True plan" },
+  { name: "HI Ohana-Centene Medicaid", type: "True plan" },
+  { name: "Illinois-Centene Medicaid", type: "True plan" },
+  { name: "KY WellCare-Centene Medicaid", type: "True plan" },
+  { name: "Magnolia-Centene Medicaid", type: "True plan" },
+  { name: "NC WellCare-Centene Medicaid", type: "True plan" },
+  { name: "NJ WellCare Fidelis-Centene Medicaid", type: "True plan" },
+  { name: "Oklahoma-Centene Medicaid", type: "True plan" },
+  { name: "Peach State-Centene Medicaid", type: "True plan" },
+  { name: "Silver Summit-Centene Medicaid", type: "True plan" },
+  { name: "Sunshine-Centene Medicaid", type: "True plan" },
+  { name: "Superior-Centene Medicaid", type: "True plan" },
+  { name: "Devoted Health", type: "True plan" },
+  { name: "Doctors Healthcare", type: "True plan" },
+  { name: "Florida Community Care", type: "True plan" },
+  { name: "Florida Complete Care", type: "True plan" },
+  { name: "IMCare", type: "True plan" },
+  { name: "Martins Point", type: "True plan" },
+  { name: "Medica", type: "True plan" },
+  { name: "MediGold", type: "True plan" },
+  { name: "MediGold MercyMCA", type: "True plan" },
+  { name: "MediGold Saint Alphonsus", type: "True plan" },
+  { name: "MediGold Trinity", type: "True plan" },
+  { name: "Mercy Care Advantage", type: "True plan" },
+  { name: "Meritain", type: "True plan" },
+  { name: "Molina Healthcare", type: "True plan" },
+  { name: "Scan Health", type: "True plan" },
+  { name: "MyTru Advantage", type: "True plan" },
+  { name: "Soda Health", type: "True plan" },
+  { name: "Speak Health Plan", type: "True plan" },
+  { name: "Elevate360", type: "True plan" },
+  { name: "UAW Budd Silverscript Caremark", type: "True plan" },
+  { name: "UAW Trust", type: "True plan" },
+  { name: "United Healthcare", type: "True plan" },
+  { name: "Wex", type: "True plan" },
+  { name: "Aetna Dental", type: "True plan" },
+  { name: "Aetna Medical Supplement", type: "True plan" },
+  { name: "Blue Cross Blue Shield MA", type: "True plan" },
+  { name: "Blue Cross Blue Shield TN", type: "True plan" },
+  { name: "CarelonRx", type: "True plan" },
+  { name: "Capital District Physicians", type: "True plan" },
+  { name: "Health choice Pathway Arizona", type: "True plan" },
+  { name: "Indiana University Health Plans", type: "True plan" },
+  { name: "John Hopkins", type: "True plan" },
+  { name: "MetroPlus Health Plan", type: "True plan" },
+  { name: "Premera", type: "True plan" },
+  { name: "PruittHealth", type: "True plan" },
+  { name: "Sharp HealthCare", type: "True plan" },
+  { name: "Simpra Advantage", type: "True plan" },
+  { name: "UCare", type: "True plan" },
+  { name: "WellCare Health Plans", type: "True plan" },
+  { name: "Amerigroup GA Families", type: "True flex card plan" },
+  { name: "AmeriHealth Caritas MW", type: "True flex card plan" },
+  { name: "Baylor Scott & White MW", type: "True flex card plan" },
+  { name: "CarePartners", type: "True flex card plan" },
+  { name: "Champion Health Plan", type: "True flex card plan" },
+  { name: "DCCMI by GRO", type: "True flex card plan" },
+  { name: "Elderplan Multi-Wallet", type: "True flex card plan" },
+  { name: "EmblemHealth", type: "True flex card plan" },
+  { name: "Hamaspik", type: "True flex card plan" },
+  { name: "Health First FL DNBC", type: "True flex card plan" },
+  { name: "Healthy Rewards DE", type: "True flex card plan" },
+  { name: "Healthy Rewards Medicare WV", type: "True flex card plan" },
+  { name: "Highmark WholeCare", type: "True flex card plan" },
+  { name: "IBX", type: "True flex card plan" },
+  { name: "IH Product Mgt", type: "True flex card plan" },
+  { name: "Inland Empire Health Plan DNBC", type: "True flex card plan" },
+  { name: "Kaiser Permanente CO", type: "True flex card plan" },
+  { name: "Kaiser Permanente CO FLEX", type: "True flex card plan" },
+  { name: "Kaiser Permanente CO OTC TEST", type: "True flex card plan" },
+  { name: "Kaiser Permanente GA", type: "True flex card plan" },
+  { name: "Kaiser Permanente GA HF TEST", type: "True flex card plan" },
+  { name: "Kaiser Permanente MAS", type: "True flex card plan" },
+  { name: "Kaiser Permanente MAS OTC TEST", type: "True flex card plan" },
+  { name: "Kaiser Permanente MW and DNBC", type: "True flex card plan" },
+  { name: "Kaiser Permanente NCAL", type: "True flex card plan" },
+  { name: "Kaiser Permanente NCAL OTC TEST", type: "True flex card plan" },
+  { name: "Kaiser Permanente SCAL", type: "True flex card plan" },
+  { name: "Kaiser Permanente SCAL OTC TEST", type: "True flex card plan" },
+  { name: "Lore Health", type: "True flex card plan" },
+  { name: "Medica DNBC", type: "True flex card plan" },
+  { name: "PrimeWest Health", type: "True flex card plan" },
+  { name: "Quartz CashCard Program", type: "True flex card plan" },
+  { name: "SpeakElevance", type: "True flex card plan" },
+  { name: "SpeakHealth Plan MW", type: "True flex card plan" },
+  { name: "The Health Plan", type: "True flex card plan" },
+  { name: "THP- Mountain Health Trust", type: "True flex card plan" },
+  { name: "Trinity Health PACE", type: "True flex card plan" },
+  { name: "Tufts Health Plan", type: "True flex card plan" },
+  { name: "Wellsense MA", type: "True flex card plan" },
+  { name: "Wellsense NH", type: "True flex card plan" },
+  { name: "Solutran", type: "True flex card plan" },
+];
+
+// ── Dummy member data ──
+const members = [
+  { memberId: "MBR-00198432", firstName: "Maria", lastName: "Garcia", dob: "1958-03-14", zip: "33012", phone: "(305) 555-0147", plan: "Aetna Commercial", claimId: "CLM-881023", orderId: "ORD-440012" },
+  { memberId: "MBR-00234871", firstName: "James", lastName: "Wilson", dob: "1962-07-22", zip: "55401", phone: "(612) 555-0293", plan: "Blue Cross Blue Shield MN", claimId: "CLM-882104", orderId: "ORD-440098" },
+  { memberId: "MBR-00301245", firstName: "Dorothy", lastName: "Chen", dob: "1949-11-05", zip: "94102", phone: "(415) 555-0381", plan: "Blue Shield California", claimId: "CLM-883201", orderId: "ORD-440155" },
+  { memberId: "MBR-00345678", firstName: "Robert", lastName: "Johnson", dob: "1955-01-30", zip: "43215", phone: "(614) 555-0412", plan: "MediGold", claimId: "CLM-884302", orderId: "ORD-440201" },
+  { memberId: "MBR-00398201", firstName: "Patricia", lastName: "Williams", dob: "1960-09-18", zip: "33101", phone: "(786) 555-0534", plan: "Simply Healthcare", claimId: "CLM-885410", orderId: "ORD-440289" },
+  { memberId: "MBR-00412390", firstName: "Linda", lastName: "Martinez", dob: "1952-06-11", zip: "85004", phone: "(602) 555-0678", plan: "Mercy Care Advantage", claimId: "CLM-886501", orderId: "ORD-440312" },
+  { memberId: "MBR-00456712", firstName: "Michael", lastName: "Brown", dob: "1965-12-03", zip: "02101", phone: "(617) 555-0789", plan: "Blue Cross Blue Shield MA", claimId: "CLM-887623", orderId: "ORD-440378" },
+  { memberId: "MBR-00478923", firstName: "Barbara", lastName: "Davis", dob: "1957-04-27", zip: "37201", phone: "(615) 555-0845", plan: "Blue Cross Blue Shield TN", claimId: "CLM-888712", orderId: "ORD-440401" },
+  { memberId: "MBR-00501234", firstName: "William", lastName: "Anderson", dob: "1948-08-19", zip: "46204", phone: "(317) 555-0923", plan: "Indiana University Health Plans", claimId: "CLM-889834", orderId: "ORD-440456" },
+  { memberId: "MBR-00534567", firstName: "Susan", lastName: "Taylor", dob: "1963-02-14", zip: "10001", phone: "(212) 555-1045", plan: "MetroPlus Health Plan", claimId: "CLM-890945", orderId: "ORD-440512" },
+  { memberId: "MBR-00567890", firstName: "Richard", lastName: "Thomas", dob: "1954-10-08", zip: "98101", phone: "(206) 555-1167", plan: "Premera", claimId: "CLM-891056", orderId: "ORD-440578" },
+  { memberId: "MBR-00601234", firstName: "Margaret", lastName: "Jackson", dob: "1959-05-21", zip: "33012", phone: "(305) 555-1289", plan: "Florida Community Care", claimId: "CLM-892167", orderId: "ORD-440634" },
+  { memberId: "MBR-00623456", firstName: "Charles", lastName: "White", dob: "1951-07-16", zip: "21201", phone: "(410) 555-1345", plan: "John Hopkins", claimId: "CLM-893278", orderId: "ORD-440689" },
+  { memberId: "MBR-00656789", firstName: "Karen", lastName: "Harris", dob: "1966-03-29", zip: "55402", phone: "(612) 555-1456", plan: "Medica", claimId: "CLM-894389", orderId: "ORD-440712" },
+  { memberId: "MBR-00689012", firstName: "Thomas", lastName: "Clark", dob: "1953-11-12", zip: "92101", phone: "(619) 555-1578", plan: "Sharp HealthCare", claimId: "CLM-895490", orderId: "ORD-440778" },
+  { memberId: "MBR-00712345", firstName: "Nancy", lastName: "Lewis", dob: "1961-08-04", zip: "30301", phone: "(404) 555-1634", plan: "Amerigroup GA Families", claimId: "CLM-896501", orderId: "ORD-440834" },
+  { memberId: "MBR-00745678", firstName: "Daniel", lastName: "Robinson", dob: "1956-04-17", zip: "80202", phone: "(303) 555-1789", plan: "Kaiser Permanente CO", claimId: "CLM-897612", orderId: "ORD-440889" },
+  { memberId: "MBR-00778901", firstName: "Lisa", lastName: "Walker", dob: "1964-01-23", zip: "94103", phone: "(415) 555-1890", plan: "Kaiser Permanente NCAL", claimId: "CLM-898723", orderId: "ORD-440945" },
+  { memberId: "MBR-00801234", firstName: "Paul", lastName: "Young", dob: "1950-09-06", zip: "90001", phone: "(213) 555-1923", plan: "Kaiser Permanente SCAL", claimId: "CLM-899834", orderId: "ORD-441001" },
+  { memberId: "MBR-00834567", firstName: "Betty", lastName: "Allen", dob: "1958-12-30", zip: "19101", phone: "(215) 555-2045", plan: "IBX", claimId: "CLM-900945", orderId: "ORD-441056" },
+  { memberId: "MBR-00867890", firstName: "Mark", lastName: "King", dob: "1967-06-15", zip: "02102", phone: "(617) 555-2167", plan: "Tufts Health Plan", claimId: "CLM-901056", orderId: "ORD-441112" },
+  { memberId: "MBR-00901234", firstName: "Sandra", lastName: "Wright", dob: "1955-02-28", zip: "10002", phone: "(212) 555-2289", plan: "EmblemHealth", claimId: "CLM-902167", orderId: "ORD-441178" },
+  { memberId: "MBR-00934567", firstName: "Steven", lastName: "Lopez", dob: "1962-10-19", zip: "33102", phone: "(786) 555-2345", plan: "Devoted Health", claimId: "CLM-903278", orderId: "ORD-441234" },
+  { memberId: "MBR-00967890", firstName: "Donna", lastName: "Hill", dob: "1947-05-11", zip: "55403", phone: "(612) 555-2456", plan: "UCare", claimId: "CLM-904389", orderId: "ORD-441289" },
+  { memberId: "MBR-01001234", firstName: "Kenneth", lastName: "Scott", dob: "1960-08-22", zip: "43216", phone: "(614) 555-2578", plan: "Molina Healthcare", claimId: "CLM-905490", orderId: "ORD-441345" },
+  { memberId: "MBR-01034567", firstName: "Carol", lastName: "Green", dob: "1953-03-07", zip: "30302", phone: "(404) 555-2634", plan: "Kaiser Permanente GA", claimId: "CLM-906501", orderId: "ORD-441401" },
+  { memberId: "MBR-01067890", firstName: "George", lastName: "Adams", dob: "1968-07-14", zip: "15201", phone: "(412) 555-2789", plan: "Highmark WholeCare", claimId: "CLM-907612", orderId: "ORD-441456" },
+  { memberId: "MBR-01101234", firstName: "Ruth", lastName: "Baker", dob: "1956-11-25", zip: "03101", phone: "(603) 555-2890", plan: "Wellsense NH", claimId: "CLM-908723", orderId: "ORD-441512" },
+  { memberId: "MBR-01134567", firstName: "Edward", lastName: "Nelson", dob: "1949-04-02", zip: "02103", phone: "(617) 555-2945", plan: "Wellsense MA", claimId: "CLM-909834", orderId: "ORD-441578" },
+  { memberId: "MBR-01167890", firstName: "Helen", lastName: "Carter", dob: "1964-09-30", zip: "33013", phone: "(305) 555-3056", plan: "Florida Complete Care", claimId: "CLM-910945", orderId: "ORD-441634" },
+];
+
+// ── State ──
+let activePattern = 'typeahead'; // 'typeahead' | 'grouped'
+let highlighted = -1;
+let filtered = [];
+
+// ── DOM refs ──
+const input = document.getElementById('combo-input');
+const listbox = document.getElementById('combo-listbox');
+const countEl = document.getElementById('result-count');
+const infoEl = document.getElementById('pattern-info');
+const formEl = document.getElementById('plan-form');
+const switchEl = document.getElementById('pattern-switch');
+
+// ── Helpers ──
+function escapeHtml(s) { return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+
+function fuzzyMatch(text, query) {
+  const lo = text.toLowerCase(), q = query.toLowerCase();
+  let qi = 0; const indices = [];
+  for (let i = 0; i < text.length && qi < q.length; i++) {
+    if (lo[i] === q[qi]) { indices.push(i); qi++; }
+  }
+  return qi === q.length ? indices : null;
+}
+
+function highlightFuzzy(text, indices) {
+  if (!indices) return escapeHtml(text);
+  const set = new Set(indices);
+  return [...text].map((c,i) => { const e = escapeHtml(c); return set.has(i) ? `<span class="match">${e}</span>` : e; }).join('');
+}
+
+function highlightSubstring(text, query) {
+  if (!query) return escapeHtml(text);
+  const idx = text.toLowerCase().indexOf(query.toLowerCase());
+  if (idx === -1) return escapeHtml(text);
+  return escapeHtml(text.slice(0,idx)) + `<span class="match">${escapeHtml(text.slice(idx, idx+query.length))}</span>` + escapeHtml(text.slice(idx+query.length));
+}
+
+function randomCardNumber() {
+  return '4' + Array.from({length:15}, ()=>Math.floor(Math.random()*10)).join('');
+}
+function randomBalance() { return '$' + (Math.floor(Math.random()*2500)+100).toLocaleString() + '.00'; }
+function randomDate() {
+  const m = Math.floor(Math.random()*12);
+  return `${['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'][m]} ${Math.floor(Math.random()*28)+1}, ${2024+Math.floor(Math.random()*2)}`;
+}
+
+// ── Views ──
+function showSearchView() {
+  document.getElementById('view-search').classList.add('active');
+  document.getElementById('view-flex-detail').classList.remove('active');
+}
+
+function showFlexDetail(plan) {
+  document.getElementById('view-search').classList.remove('active');
+  document.getElementById('view-flex-detail').classList.add('active');
+  document.getElementById('flex-plan-name').textContent = plan.name;
+  document.getElementById('flex-card-number').textContent = randomCardNumber().replace(/(.{4})/g,'$1 ').trim();
+  document.getElementById('flex-balance').textContent = randomBalance();
+  document.getElementById('flex-member-since').textContent = randomDate();
+}
+
+function resetForm() {
+  input.value = '';
+  formEl.classList.remove('visible');
+  formEl.querySelectorAll('input').forEach(i => i.value = '');
+  render('');
+}
+
+// ── Render listbox based on active pattern ──
+function render(query) {
+  listbox.innerHTML = '';
+  highlighted = -1;
+  filtered = [];
+
+  if (activePattern === 'typeahead') {
+    renderTypeahead(query);
+  } else {
+    renderGrouped(query);
+  }
+}
+
+function renderTypeahead(query) {
+  if (!query) {
+    filtered = plans.map(p => ({ ...p, indices: null }));
+  } else {
+    filtered = plans.map(p => ({ ...p, indices: fuzzyMatch(p.name, query) })).filter(p => p.indices !== null);
+  }
+
+  if (filtered.length === 0) {
+    listbox.innerHTML = '<div class="no-results">No plans match your search</div>';
+    countEl.textContent = '0 results';
+    return;
+  }
+
+  countEl.textContent = `${filtered.length} of ${plans.length} plans`;
+
+  filtered.forEach((plan, i) => {
+    const opt = document.createElement('div');
+    opt.className = 'combobox-option';
+    opt.setAttribute('role','option');
+    const label = query ? highlightFuzzy(plan.name, plan.indices) : escapeHtml(plan.name);
+    const bc = plan.type === 'True plan' ? 'plan' : 'flex';
+    const bl = plan.type === 'True plan' ? 'Plan' : 'Flex Card';
+    opt.innerHTML = `<span>${label}</span><span class="type-badge ${bc}">${bl}</span>`;
+    opt.addEventListener('mouseenter', () => setHighlight(i));
+    opt.addEventListener('click', () => selectOption(plan));
+    listbox.appendChild(opt);
+  });
+}
+
+function renderGrouped(query) {
+  const truePlans = plans.filter(p => p.type === 'True plan');
+  const flexPlans = plans.filter(p => p.type === 'True flex card plan');
+  const filterFn = p => !query || p.name.toLowerCase().includes(query.toLowerCase());
+  const fTrue = truePlans.filter(filterFn);
+  const fFlex = flexPlans.filter(filterFn);
+  const total = fTrue.length + fFlex.length;
+
+  if (total === 0) {
+    listbox.innerHTML = '<div class="no-results">No plans match your search</div>';
+    countEl.textContent = '0 results';
+    return;
+  }
+
+  countEl.textContent = `${total} of ${plans.length} plans`;
+
+  if (fTrue.length > 0) {
+    const h = document.createElement('div');
+    h.className = 'group-header';
+    h.textContent = `True Plans (${fTrue.length})`;
+    listbox.appendChild(h);
+
+    fTrue.forEach(plan => {
+      const idx = filtered.length;
+      filtered.push(plan);
+      const opt = document.createElement('div');
+      opt.className = 'combobox-option';
+      opt.setAttribute('role','option');
+      opt.innerHTML = `<span>${highlightSubstring(plan.name, query)}</span>`;
+      opt.addEventListener('mouseenter', () => setHighlight(idx));
+      opt.addEventListener('click', () => selectOption(plan));
+      listbox.appendChild(opt);
+    });
+  }
+
+  if (fTrue.length > 0 && fFlex.length > 0) {
+    const d = document.createElement('div');
+    d.className = 'divider';
+    listbox.appendChild(d);
+  }
+
+  if (fFlex.length > 0) {
+    const h = document.createElement('div');
+    h.className = 'group-header';
+    h.textContent = `Flex Card Plans (${fFlex.length})`;
+    listbox.appendChild(h);
+
+    fFlex.forEach(plan => {
+      const idx = filtered.length;
+      filtered.push(plan);
+      const opt = document.createElement('div');
+      opt.className = 'combobox-option';
+      opt.setAttribute('role','option');
+      opt.innerHTML = `<span>${highlightSubstring(plan.name, query)}</span><span class="type-badge flex">Flex Card</span>`;
+      opt.addEventListener('mouseenter', () => setHighlight(idx));
+      opt.addEventListener('click', () => selectOption(plan));
+      listbox.appendChild(opt);
+    });
+  }
+}
+
+// ── Combobox interactions ──
+function setHighlight(idx) {
+  const opts = listbox.querySelectorAll('.combobox-option');
+  opts.forEach(o => o.classList.remove('highlighted'));
+  if (idx >= 0 && idx < opts.length) {
+    opts[idx].classList.add('highlighted');
+    opts[idx].scrollIntoView({ block: 'nearest' });
+  }
+  highlighted = idx;
+}
+
+function selectOption(plan) {
+  input.value = plan.name;
+  closeListbox();
+  formEl.classList.remove('visible');
+
+  if (plan.type === 'True flex card plan') {
+    showFlexDetail(plan);
+  } else {
+    formEl.classList.add('visible');
+  }
+}
+
+function openListbox() { listbox.classList.add('open'); input.setAttribute('aria-expanded','true'); }
+function closeListbox() { listbox.classList.remove('open'); input.setAttribute('aria-expanded','false'); highlighted = -1; }
+
+input.addEventListener('focus', () => { render(input.value); openListbox(); });
+input.addEventListener('input', () => { formEl.classList.remove('visible'); render(input.value); openListbox(); });
+input.addEventListener('keydown', (e) => {
+  if (e.key === 'ArrowDown') { e.preventDefault(); setHighlight(Math.min(highlighted+1, filtered.length-1)); }
+  if (e.key === 'ArrowUp') { e.preventDefault(); setHighlight(Math.max(highlighted-1, 0)); }
+  if (e.key === 'Enter' && highlighted >= 0) { e.preventDefault(); selectOption(filtered[highlighted]); }
+  if (e.key === 'Escape') { closeListbox(); input.blur(); }
+});
+
+document.addEventListener('click', (e) => {
+  if (!document.getElementById('combobox-wrapper').contains(e.target)) closeListbox();
+});
+
+document.getElementById('btn-clear').addEventListener('click', () => {
+  resetForm();
+  hideResults();
+});
+
+// ── Search: by plan form ──
+document.getElementById('btn-search-plan').addEventListener('click', () => {
+  const selectedPlan = input.value.trim();
+  const memberId = document.getElementById('f-member-id').value.trim().toLowerCase();
+  const firstName = document.getElementById('f-first-name').value.trim().toLowerCase();
+  const lastName = document.getElementById('f-last-name').value.trim().toLowerCase();
+  const claimId = document.getElementById('f-claim-id').value.trim().toLowerCase();
+  const orderId = document.getElementById('f-order-id').value.trim().toLowerCase();
+  const phone = document.getElementById('f-phone').value.trim().replace(/\D/g, '');
+
+  let results = members;
+  if (selectedPlan) results = results.filter(m => m.plan.toLowerCase() === selectedPlan.toLowerCase());
+  if (memberId) results = results.filter(m => m.memberId.toLowerCase().includes(memberId));
+  if (firstName) results = results.filter(m => m.firstName.toLowerCase().includes(firstName));
+  if (lastName) results = results.filter(m => m.lastName.toLowerCase().includes(lastName));
+  if (claimId) results = results.filter(m => m.claimId.toLowerCase().includes(claimId));
+  if (orderId) results = results.filter(m => m.orderId.toLowerCase().includes(orderId));
+  if (phone) results = results.filter(m => m.phone.replace(/\D/g, '').includes(phone));
+
+  renderResults(results);
+});
+
+// ── Search: by member info ──
+document.getElementById('btn-search-member').addEventListener('click', () => {
+  const firstName = document.getElementById('m-first-name').value.trim().toLowerCase();
+  const lastName = document.getElementById('m-last-name').value.trim().toLowerCase();
+  const dob = document.getElementById('m-dob').value;
+  const zip = document.getElementById('m-zip').value.trim();
+
+  let results = members;
+  if (firstName) results = results.filter(m => m.firstName.toLowerCase().includes(firstName));
+  if (lastName) results = results.filter(m => m.lastName.toLowerCase().includes(lastName));
+  if (dob) results = results.filter(m => m.dob === dob);
+  if (zip) results = results.filter(m => m.zip.startsWith(zip));
+
+  renderResults(results);
+});
+
+const resultsCard = document.getElementById('results-card');
+const resultsMeta = document.getElementById('results-meta');
+const resultsBody = document.getElementById('results-body');
+
+function hideResults() {
+  resultsCard.classList.remove('visible');
+}
+
+function renderResults(results) {
+  resultsCard.classList.add('visible');
+  resultsMeta.textContent = `${results.length} member${results.length !== 1 ? 's' : ''} found`;
+
+  if (results.length === 0) {
+    resultsBody.innerHTML = '<div class="results-empty">No members match your search criteria</div>';
+    return;
+  }
+
+  let html = `<table class="results-table">
+    <thead><tr>
+      <th>Name</th>
+      <th>Member ID</th>
+      <th>DOB</th>
+      <th>Plan</th>
+    </tr></thead><tbody>`;
+
+  results.forEach(m => {
+    const dobFormatted = new Date(m.dob + 'T00:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+    html += `<tr>
+      <td class="member-name">${escapeHtml(m.firstName)} ${escapeHtml(m.lastName)}</td>
+      <td class="member-id-cell">${escapeHtml(m.memberId)}</td>
+      <td>${dobFormatted}</td>
+      <td>${escapeHtml(m.plan)}</td>
+    </tr>`;
+  });
+
+  html += '</tbody></table>';
+  resultsBody.innerHTML = html;
+}
+
+// ── Pattern switch ──
+const patternDescriptions = {
+  typeahead: '<strong>Type-ahead filtering</strong> — Flat list with fuzzy matching. Highlights matched characters as you type any part of a plan name.',
+  grouped: '<strong>Grouped by type</strong> — Results split under "True Plans" and "Flex Card Plans" headers. Exact substring matching.'
+};
+
+switchEl.addEventListener('click', (e) => {
+  const btn = e.target.closest('button[data-pattern]');
+  if (!btn || btn.dataset.pattern === activePattern) return;
+
+  activePattern = btn.dataset.pattern;
+  switchEl.querySelectorAll('button').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+
+  infoEl.innerHTML = patternDescriptions[activePattern];
+  formEl.classList.remove('visible');
+  render(input.value);
+  if (document.activeElement === input) openListbox();
+});
+
+// ── Search method radio ──
+const methodEl = document.getElementById('search-method');
+const sectionPlan = document.getElementById('section-plan');
+const sectionMember = document.getElementById('section-member');
+const switchWrapper = document.getElementById('pattern-switch-wrapper');
+
+methodEl.addEventListener('change', (e) => {
+  const method = e.target.value;
+  // Update radio card styles
+  methodEl.querySelectorAll('.radio-card').forEach(c => c.classList.remove('active'));
+  e.target.closest('.radio-card').classList.add('active');
+
+  if (method === 'plan') {
+    sectionPlan.classList.add('visible');
+    sectionMember.classList.remove('visible');
+    switchWrapper.classList.remove('disabled');
+  } else {
+    sectionPlan.classList.remove('visible');
+    sectionMember.classList.add('visible');
+    switchWrapper.classList.add('disabled');
+    closeListbox();
+    formEl.classList.remove('visible');
+  }
+});
+
+document.getElementById('btn-clear-member').addEventListener('click', () => {
+  sectionMember.querySelectorAll('input').forEach(i => i.value = '');
+  hideResults();
+});
+
+// ── Side panel toggle ──
+const tipsToggle = document.getElementById('tips-toggle');
+const sidePanel = document.getElementById('side-panel');
+const panelOverlay = document.getElementById('panel-overlay');
+const panelClose = document.getElementById('panel-close');
+
+function openPanel() {
+  sidePanel.classList.add('open');
+  panelOverlay.classList.add('open');
+  tipsToggle.classList.add('active');
+}
+
+function closePanel() {
+  sidePanel.classList.remove('open');
+  panelOverlay.classList.remove('open');
+  tipsToggle.classList.remove('active');
+}
+
+tipsToggle.addEventListener('click', () => {
+  sidePanel.classList.contains('open') ? closePanel() : openPanel();
+});
+panelOverlay.addEventListener('click', closePanel);
+panelClose.addEventListener('click', closePanel);
+
+// ── Init ──
+countEl.textContent = `${plans.length} plans available`;
+</script>
+
+</body>
+</html>
